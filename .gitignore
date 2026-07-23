@@ -1,0 +1,7 @@
+# Ignore Dataset Files
+*.csv
+*.zip
+data/
+
+# Ignore Environment & API Keys
+.env
