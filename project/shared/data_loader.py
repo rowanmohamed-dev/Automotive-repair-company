@@ -108,3 +108,19 @@ class DataLoader:
         """
         return len(self.df.columns)
     
+    def get_solution_for_problem(self, problem):
+        """
+        Get the solution for a specific problem from the cleaned dataset.
+
+        Args:
+            problem (str): The problem to get the solution for.
+
+        Returns:
+            pd.Series: Solutions for the specified problem.
+
+        Raises:
+            ValueError: If the problem column is not found in the dataset.
+        """
+        if problem not in self.df.columns:
+            raise ValueError(f"Problem '{problem}' not found in the dataset.")
+        return self.df[problem].dropna().reset_index(drop=True)
