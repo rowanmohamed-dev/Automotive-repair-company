@@ -15,7 +15,7 @@ class DataLoader:
         Returns:
             pd.DataFrame: The cleaned dataset as a pandas DataFrame.
         """
-        return pd.read_csv(self.data_path)
+        return self.df
     
     
     def get_columns(self):
