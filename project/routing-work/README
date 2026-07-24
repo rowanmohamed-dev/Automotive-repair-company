@@ -1,0 +1,29 @@
+Deterministic Routing & Evaluation
+Overview
+
+This component classifies each customer complaint into one of eight categories using a single, constrained call to Gemini (gemini-flash-latest). The category then maps to a fixed workflow function that queries the shared vehicle repair dataset — no further model calls happen after classification. This is the "least powerful pattern that fits" for this problem: the complaint's meaning has to be interpreted (so plain rule-matching alone is too brittle), but the next step is always one of a small, known set of workflows with no dependency on intermediate tool results — which is exactly the case routing was designed for.
+
+Files
+File	Purpose
+routing/categories.py	The 8 supported categories, a keyword table used both for validating model output and for auto-labeling dataset rows, and the category → workflow mapping
+routing/classifier.py	Builds the classification prompt, calls Gemini, retries (max 2) on an invalid category, and returns the predicted category with token/call counts
+routing/workflows.py	One function per category (e.g. run_brake_workflow), each calling the shared VehicleTools to look up similar historical cases and a suggested solution. This is the "ordinary, testable code" that runs after classification
+tools/vehicle_tools.py	Shared dataset tools (find_similar_problems, get_solution_for_problem, get_history_by_customer, get_problems_by_brand, get_location_stats) — used by all four agent architectures, not just routing
+evaluation/build_test_cases.py	Builds a balanced, labeled test set directly from the dataset's COMMON PROBLEM column (auto-labeled with the same keyword table the classifier logic is built on), instead of hand-written complaints
+evaluation/metrics.py	Generic timing/accuracy/token recording, shared across all four agents
+evaluation/run_routing_eval.py	Runs the full pipeline (classify → workflow) over the test set and prints a summary table
+How to run
+bash
+cd evaluation
+python build_test_cases.py     # sanity-check the labeled test set (no API calls)
+python run_routing_eval.py     # runs the full classify -> workflow pipeline
+
+Results accumulate in evaluation/results.json.
+
+Dataset connection
+
+The dataset (Vehicle_Service_and_Repair_Dataset_for_Analysis.csv) is treated as the company's historical repair records, not as training data. Routing only uses it after classification, through VehicleTools, to look up similar past cases and their solutions — the same tools the reactive and ReAct agents use, just invoked differently.
+
+Known limitation
+
+Gemini's free tier caps this model at 5 requests/minute. The eval script waits 13 seconds between test cases to stay under that limit, which makes a full 32-case run take roughly 7 minutes. For quick iteration during development, reduce n_per_category in build_test_cases.py to shrink the test set.
