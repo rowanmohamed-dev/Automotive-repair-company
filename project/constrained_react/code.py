@@ -4,9 +4,9 @@ from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-# ---------------------------------------------------------
+
 # 1. Schema Definition (Required for Workstream 3)
-# ---------------------------------------------------------
+
 class AgentStepSchema(BaseModel):
     thought: str = Field(description="Step-by-step reasoning of the agent.")
     action: Optional[str] = Field(default=None, description="Name of the tool to execute.")
@@ -15,9 +15,9 @@ class AgentStepSchema(BaseModel):
     final_answer: Optional[str] = Field(default=None, description="Final response to the user.")
 
 
-# ---------------------------------------------------------
+
 # 2. Allow-List Definition (Required for Workstream 3)
-# ---------------------------------------------------------
+
 ALLOWED_TOOLS = [
     "get_car_history",
     "get_car_state",
@@ -26,9 +26,9 @@ ALLOWED_TOOLS = [
 ]
 
 
-# ---------------------------------------------------------
+
 # 3. Retry & Escalation Logic (Required for Workstream 3)
-# ---------------------------------------------------------
+
 class EscalationException(Exception):
     """Exception raised when step budget or validation limits are exceeded."""
     pass
@@ -49,9 +49,10 @@ def escalate_to_human(problem_description: str, history: list, reason: str) -> d
     }
 
 
-# ---------------------------------------------------------
+
+
 # 4. Constrained ReAct Agent Class (MAX_STEPS Enforced)
-# ---------------------------------------------------------
+
 class ConstrainedReActAgent:
     def __init__(self, df=None, max_steps: int = 5):
         self.df = df
