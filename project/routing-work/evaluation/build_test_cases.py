@@ -1,20 +1,19 @@
-import os
 import sys
+from pathlib import Path
 
-sys.path.append(
-    os.path.join(os.path.dirname(__file__), "..", "routing")
-)
-sys.path.append(
-    os.path.join(os.path.dirname(__file__), "..", "data")
-)
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parents[1]
+sys.path.append(str(PROJECT_ROOT))
+sys.path.append(str(SCRIPT_DIR.parent / "routing"))
 
 from categories import infer_category_from_text
-from data_loader import DataLoader
+from shared.data_loader import DataLoader
 
-DEFAULT_CSV_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "Vehicle_Service_and_Repair_Dataset_for_Analysis.csv",
+DEFAULT_CSV_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "cleaned"
+    / "cleaned_vehicle_service_repair_dataset.csv"
 )
 
 
@@ -40,7 +39,7 @@ def get_test_cases(csv_path=DEFAULT_CSV_PATH, n_per_category=4, seed=42):
     df = loader.get_dataset()
 
     df = df.copy()
-    df["INFERRED_CATEGORY"] = df["COMMON PROBLEM"].apply(
+    df["INFERRED_CATEGORY"] = df["common_problem"].apply(
         infer_category_from_text
     )
 
@@ -48,7 +47,7 @@ def get_test_cases(csv_path=DEFAULT_CSV_PATH, n_per_category=4, seed=42):
     for category, group in df.groupby("INFERRED_CATEGORY"):
         sample_size = min(n_per_category, len(group))
         sample = group.sample(n=sample_size, random_state=seed)
-        for problem in sample["COMMON PROBLEM"]:
+        for problem in sample["common_problem"]:
             test_cases.append((problem, category))
 
     return test_cases

@@ -1,3 +1,9 @@
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT_DIR))
+
 from shared.config import DATA_PATH
 from shared.data_loader import DataLoader
 from shared.tools import VehicleTools
@@ -26,7 +32,7 @@ def main():
 
     result = agent.process_request(
         "customer_history",
-        customer_id="1"
+        customer_id=1
     )
 
     print("Result:")
@@ -80,7 +86,7 @@ def main():
 
     result = agent.process_request(
         "location_stats",
-        city="New York"
+        state="Andhra Pradesh"
     )
 
     print("Result:")

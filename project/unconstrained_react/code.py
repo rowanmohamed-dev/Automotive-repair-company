@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path
-PROJECT_ROOT = Path(_file_).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(PROJECT_ROOT))
 
 from shared.config import DATA_PATH
@@ -32,7 +32,7 @@ class UnconstrainedReActAgent:
     - No escalation mechanism
     """
 
-    def _init_(self, tools):
+    def __init__(self, tools):
         self.tools = tools
 
     def execute_tool(self, tool_name, arguments):
@@ -92,5 +92,5 @@ def main():
     print(result)
 
 
-if _name_ == "_main_":
+if __name__ == "_main_":
     main()

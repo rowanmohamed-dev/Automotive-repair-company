@@ -1,4 +1,5 @@
 from collections import Counter
+import re
 
 
 class VehicleTools:
@@ -11,71 +12,62 @@ class VehicleTools:
     def __init__(self, data_loader):
         self.data_loader = data_loader
 
+    @staticmethod
+    def _normalize_text(text):
+        if text is None:
+            return ""
+        text = str(text).strip().lower()
+        return " ".join(re.findall(r"\w+", text))
+
     def get_history_by_customer(self, customer_id):
-        """
-        Look up the service history for a given customer.
-
-        Args:
-            customer_id: The customer ID to search for.
-
-        Returns:
-            list[str]: Service history entries for that customer.
-        """
         df = self.data_loader.get_dataset()
-        if "CUSTOMER ID" not in df.columns:
-            raise ValueError("Column 'CUSTOMER ID' not found in the dataset.")
+        if "customer_id" not in df.columns:
+            raise ValueError("Column 'customer_id' not found in the dataset.")
 
-        matches = df[df["CUSTOMER ID"] == customer_id]
+        matches = df[df["customer_id"] == customer_id]
         if matches.empty:
             return []
-        return matches["SERVICE HISTORY"].tolist()
+        return matches["service_history"].tolist()
 
     def find_similar_problems(self, problem_text, limit=5):
-        """
-        Find rows whose COMMON PROBLEM text overlaps with the given text.
-
-        Args:
-            problem_text (str): Free-text complaint from the customer.
-            limit (int): Max number of matching rows to return.
-
-        Returns:
-            list[dict]: Matching rows as plain dicts (problem, solution,
-            vehicle company).
-        """
         df = self.data_loader.get_dataset()
-        if "COMMON PROBLEM" not in df.columns:
-            raise ValueError("Column 'COMMON PROBLEM' not found in the dataset.")
+        if "common_problem" not in df.columns:
+            raise ValueError("Column 'common_problem' not found in the dataset.")
 
-        query_words = set(problem_text.lower().split())
+        query = self._normalize_text(problem_text)
+        if not query:
+            return []
 
-        def overlaps(problem):
-            problem_words = set(str(problem).lower().split())
-            return len(query_words & problem_words) > 0
+        query_terms = set(query.split())
+        scored_rows = []
 
-        matches = df[df["COMMON PROBLEM"].apply(overlaps)]
-        results = matches.head(limit)
+        for _, row in df.iterrows():
+            problem = self._normalize_text(row.get("common_problem"))
+            if not problem:
+                continue
+
+            problem_terms = set(problem.split())
+            overlap = len(query_terms & problem_terms)
+            score = overlap
+            if score == 0 and query in problem:
+                score = 1
+
+            if score > 0:
+                scored_rows.append((score, row))
+
+        scored_rows.sort(key=lambda item: (-item[0], item[1].name))
+        results = [row for _, row in scored_rows[:limit]]
 
         return [
             {
-                "problem": row["COMMON PROBLEM"],
-                "solution": row.get("SOLUTION USED"),
-                "vehicle_company": row.get("VEHICAL COMPANY"),
+                "problem": row["common_problem"],
+                "solution": row.get("solution_used"),
+                "vehicle_company": row.get("vehicle_company"),
             }
-            for _, row in results.iterrows()
+            for row in results
         ]
 
     def get_solution_for_problem(self, problem_text):
-        """
-        Return the most common repair solution used for problems similar
-        to the given text.
-
-        Args:
-            problem_text (str): Free-text complaint from the customer.
-
-        Returns:
-            str | None: The most frequent matching solution, or None if
-            no similar case was found.
-        """
         matches = self.find_similar_problems(problem_text, limit=50)
         if not matches:
             return None
@@ -87,49 +79,32 @@ class VehicleTools:
         most_common, _ = Counter(solutions).most_common(1)[0]
         return most_common
 
-    def get_problems_by_brand(self, vehical_company, limit=10):
-        """
-        Return the common problems reported for a given vehicle brand.
-
-        Args:
-            vehical_company (str): Brand name, e.g. "Honda".
-            limit (int): Max number of rows to return.
-
-        Returns:
-            list[str]: Common problem descriptions for that brand.
-        """
+    def get_problems_by_brand(self, vehicle_company, limit=10):
         df = self.data_loader.get_dataset()
-        if "VEHICAL COMPANY" not in df.columns:
-            raise ValueError("Column 'VEHICAL COMPANY' not found in the dataset.")
+        if "vehicle_company" not in df.columns:
+            raise ValueError("Column 'vehicle_company' not found in the dataset.")
 
-        matches = df[
-            df["VEHICAL COMPANY"].str.strip().str.lower()
-            == vehical_company.strip().lower()
-        ]
-        return matches["COMMON PROBLEM"].head(limit).tolist()
+        company_name = self._normalize_text(vehicle_company)
+        if not company_name:
+            return []
+
+        matches = df[df["vehicle_company"].apply(lambda value: company_name in self._normalize_text(value))]
+        return matches["common_problem"].head(limit).tolist()
 
     def get_location_stats(self, city=None, state=None):
-        """
-        Return how many records exist for a given city and/or state.
-
-        Args:
-            city (str, optional): City name to filter by.
-            state (str, optional): State name to filter by.
-
-        Returns:
-            int: Number of matching records.
-        """
         df = self.data_loader.get_dataset()
         filtered = df
 
         if city is not None:
-            if "CITY" not in df.columns:
-                raise ValueError("Column 'CITY' not found in the dataset.")
-            filtered = filtered[filtered["CITY"] == city]
+            if "city" not in df.columns:
+                raise ValueError("City information is unavailable in the dataset.")
+            city_normalized = self._normalize_text(city)
+            filtered = filtered[filtered["city"].apply(lambda value: self._normalize_text(value) == city_normalized)]
 
         if state is not None:
-            if "STATE" not in df.columns:
-                raise ValueError("Column 'STATE' not found in the dataset.")
-            filtered = filtered[filtered["STATE"] == state]
+            if "state" not in df.columns:
+                raise ValueError("State information is unavailable in the dataset.")
+            state_normalized = self._normalize_text(state)
+            filtered = filtered[filtered["state"].apply(lambda value: self._normalize_text(value) == state_normalized)]
 
         return len(filtered)

@@ -1,19 +1,24 @@
 import os
 import time
-from google import genai
 from dotenv import load_dotenv
 
 from categories import (
     CATEGORIES,
     get_workflow,
+    infer_category_from_text,
     is_valid_category,
 )
 
 load_dotenv()
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+try:
+    from google import genai
+except ImportError:
+    genai = None
+
+CLIENT = None
+if genai is not None and os.getenv("GEMINI_API_KEY"):
+    CLIENT = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 MODEL = "gemini-flash-latest"
 MAX_RETRIES = 2
@@ -42,7 +47,14 @@ Rules:
 
 
 def call_model(prompt: str) -> dict:
-    response = client.models.generate_content(
+    if CLIENT is None:
+        return {
+            "text": "",
+            "input_tokens": 0,
+            "output_tokens": 0,
+        }
+
+    response = CLIENT.models.generate_content(
         model=MODEL,
         contents=prompt,
     )
@@ -73,7 +85,7 @@ def classify(complaint: str) -> dict:
         total_output_tokens += result["output_tokens"]
         calls_made += 1
 
-        if is_valid_category(raw_response):
+        if CLIENT is not None and is_valid_category(raw_response):
             return {
                 "category": raw_response,
                 "raw_response": raw_response,
@@ -82,6 +94,18 @@ def classify(complaint: str) -> dict:
                 "calls_made": calls_made,
                 "input_tokens": total_input_tokens,
                 "output_tokens": total_output_tokens,
+            }
+
+        if CLIENT is None:
+            category = infer_category_from_text(complaint)
+            return {
+                "category": category,
+                "raw_response": category,
+                "workflow": get_workflow(category),
+                "retries_used": 0,
+                "calls_made": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
             }
 
         prompt = f"""

@@ -1,38 +1,29 @@
-import os
 import sys
 import time
+from pathlib import Path
 
-sys.path.append(
-    os.path.join(os.path.dirname(__file__), "..", "routing")
-)
-sys.path.append(
-    os.path.join(os.path.dirname(__file__), "..", "data")
-)
-sys.path.append(
-    os.path.join(os.path.dirname(__file__), "..", "tools")
-)
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parents[1]
+sys.path.append(str(PROJECT_ROOT))
+sys.path.append(str(SCRIPT_DIR.parent / "routing"))
 
 from build_test_cases import get_test_cases
 from classifier import classify
-from data_loader import DataLoader
+from shared.data_loader import DataLoader
 from metrics import (
     RESULTS_FILE,
     print_summary,
     save_results,
     time_and_record,
 )
-from vehicle_tools import VehicleTools
+from shared.tools import VehicleTools
 from workflows import run_workflow
 
 # Gemini free tier allows 5 requests/minute for this model.
 # 13 seconds between calls keeps us safely under that limit.
 SECONDS_BETWEEN_CALLS = 13
 
-CSV_PATH = os.path.join(
-    os.path.dirname(__file__),
-    "..",
-    "Vehicle_Service_and_Repair_Dataset_for_Analysis.csv",
-)
+CSV_PATH = PROJECT_ROOT / "data" / "cleaned" / "cleaned_vehicle_service_repair_dataset.csv"
 
 
 def classify_and_route(complaint, tools):
