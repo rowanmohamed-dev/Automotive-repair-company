@@ -2,8 +2,12 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DATA_PATH = BASE_DIR / "data" / "processed" / "cleaned_dataset.csv"
-
+DATA_PATH = (
+    BASE_DIR
+    / "data"
+    / "raw"
+    / "Vehicle Service and Repair Dataset for Analysis.csv"
+)
 
 """
     this file contains the configuration settings for the project,
